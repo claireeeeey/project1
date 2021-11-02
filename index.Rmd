@@ -19,15 +19,18 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Lingyu Yan ly4423
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+data1 is global education statistics including multiple comparable indicators such as education access from 2000 to 2014. data2 is global environment, social and governance statistics which provides information on 17 themes from 2000 to 2014. Many countries have been focused on these two topics and done a lot of research on them because both education and environment can have great influence on social development and financial markets.
 
 ```{R}
 # read your datasets in here, e.g., with read_csv()
-
+library(tidyverse)
+library(stringr)
+data1 <- read_csv("~/EdStats1.csv")
+data2 <- read_csv("~/ESGData3.csv")
 ```
 
 #### Tidying: Reshaping
@@ -36,6 +39,10 @@ If your datasets are tidy already, demonstrate that you can reshape data with pi
 
 ```{R}
 # your tidying code (if applicable; can also wait until wrangling section)
+data11 <- data1 %>% pivot_longer(5:19, names_to="Year1", values_to="EdValue")
+data22 <- data2 %>% pivot_longer(5:19, names_to="Year2", values_to="ESGValue")
+data11
+data22
 ```
 
     
@@ -43,44 +50,82 @@ If your datasets are tidy already, demonstrate that you can reshape data with pi
 
 ```{R}
 # your joining code
-
-# your joining code
+data3 <- data22 %>% inner_join(data11, by=c("CountryName", "Year2"="Year1"))
+data3
+data3 %>% distinct(CountryName)
+data22 %>% anti_join(data11, by=c("CountryName", "Year2"="Year1")) %>% distinct(CountryName)
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+I used inner_join to drop rows in either dataset without a match and there were 12 distinct observations in common and 227 that appear in one dataset but not the other.
+
+```{R}
+# your joining code
+data1
+data2
+data3 %>% summarize(n_distinct(CountryName))
+data1 %>% summarize(n_distinct(CountryName))
+data2 %>% summarize(n_distinct(CountryName))
+239-12
+```
+
+Originally, there are 12,464 rows and 12 distinct observations in data1; 16,013 rows and 239 distinct observations in data2. Therefore, data2 contains all observations in data1 and dropped 227 observations after doing the join.
 
 ####  Wrangling
 
 ```{R}
 # your wrangling code
-
-# your wrangling code
-
-# your wrangling code
+data3 %>% mutate(prob=ESGValue/EdValue)
+data3 %>% distinct(CountryName) %>% filter(str_detect(CountryName, "[ ]"))
 ```
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+I used mutate to generate the ratio of environment, social and governance value (ESGValue) to education value (EdValue) and find the country names which has a space in the name (Arab World and United States.
 
+```{R}
+# your wrangling code
+data3.1 <- data3 %>% group_by(CountryName) %>% summarize(mean_EdVal=mean(EdValue, na.rm=T), sd_EdVal=sd(EdValue, na.rm=T), var_EdVal=var(EdValue, na.rm=T), n()) %>% na.omit()
+data3.1
+data3.1 %>% slice_max(mean_EdVal, n=1)
+data3.1 %>% slice_min(mean_EdVal, n=1) 
+```
+
+I found the mean, standard deviation, variance, and the maximum and minimum values of the education values of 11 countries (one country loses data). Arab World has the largest mean of value in education of different indicators and Monaco has the smallest. However, this may not mean that Arab World has the greatest education or Monaco has the worest in the world. The value may be influenced by many factors such as population.
 
 #### Visualizing
 
 ```{R}
 # your plot 1
+library(ggplot2)
+data3.1 <- data3 %>% na.omit()
+ggplot(data3.1, aes(x=EdValue, fill=CountryName))+
+  geom_density(alpha=0.8)+
+  scale_x_continuous(limits=c(10,50))+
+  ggtitle("EdValue Denaity Curve")
 ```
 
-Your discussion of plot 1
+This plot represent the distribution of education value for each country. The class of Arab World has the most variation and highest value compared to other countries.
 
 ```{R}
 # your plot 2
+ggplot(data3.1, aes(x=EdValue, fill=CountryName))+
+  geom_density(alpha=10)+
+  scale_x_continuous(limits=c(10,50))+
+  facet_grid(CountryName~., scales="free_y")+
+  ggtitle("EdValue by Country Name")
 ```
 
-Your discussion of plot 2
+This plot is a matrix of panels and each one shows the distribution of educational value for each country. Since Arab World has the largest range of y axis (0.00~0.25), it is considered to be the one has the most variation and highest value.
 
 ```{R}
 # your plot 3
+ggplot(data3.1, aes(EdValue, ESGValue))+
+  geom_point()+
+  geom_smooth(formula=y~x, method="lm", se=F)+
+  ggtitle("EdValue vs ESGValue")+
+  xlab("Education Value")+
+  ylab("Environment, Social and Governance Value")
 ```
 
-Your discussion of plot 3
+This plot shows the relationship between education value and environment, social and governance value. There is no relationship between these two values.
 
 #### Concluding Remarks
 
